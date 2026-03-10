@@ -88,7 +88,7 @@ async function pwCheck(fn, timeout = 14000) {
     await ctx.addInitScript(STEALTH);
     page = await ctx.newPage();
     return await Promise.race([fn(page), sleep(timeout).then(() => { throw new Error('timeout'); })]);
-  } catch { return 'taken'; }
+  } catch { return 'unknown'; }
   finally {
     try { await page?.close(); } catch {}
     try { await ctx?.close(); } catch {}
@@ -243,7 +243,7 @@ const PLATFORMS = [
       const { status: s2, body: b2 } = await httpGet(`https://www.youtube.com/c/${n}`, { 'Accept': 'text/html' });
       if (s2 === 404) return 'free';
       if (s2 === 200 && b2.length > 5000) return 'taken';
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -274,9 +274,9 @@ const PLATFORMS = [
         const c = await page.content();
         if (c.includes('"userNotFound"') || c.includes('Page Not Found') || c.includes('Sorry, this page')) return 'free';
         if (c.includes('"username"') && c.includes('"profile_pic_url"')) return 'taken';
-        return 'taken'; // got a 200 page, user likely exists
+        return 'unknown'; // got a 200 page but can't confirm
       }, 20000);
-      return r ?? 'taken';
+      return r ?? 'unknown';
     }
   },
 
@@ -305,9 +305,9 @@ const PLATFORMS = [
         const c = await page.content();
         if (c.includes('"statusCode":10202') || c.includes('user-not-exist') || c.includes("Couldn't find this account") || c.includes('"statusCode":10221')) return 'free';
         if (c.includes('"uniqueId"') || c.includes('"followerCount"') || c.includes('"nickname"')) return 'taken';
-        return res.status() === 200 && c.length > 10000 ? 'taken' : 'free';
+        return res.status() === 200 && c.length > 10000 ? 'taken' : 'unknown';
       }, 18000);
-      return r ?? 'free';
+      return r ?? 'unknown';
     }
   },
 
@@ -355,7 +355,7 @@ const PLATFORMS = [
       );
       if (status === 404 || body.includes('"reason": "USER_DOESNT_EXIST"')) return 'free';
       if (status === 200 && body.includes('"name"')) return 'taken';
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -370,7 +370,7 @@ const PLATFORMS = [
       );
       if (status === 404) return 'free';
       if (status === 200 && body.includes('"login"')) return 'taken';
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -385,9 +385,9 @@ const PLATFORMS = [
         const c = await page.content();
         if (c.includes('Sorry. Unless you') || c.includes('"status":404')) return 'free';
         if (c.includes('"displayName"') || c.includes('"channelLogin"')) return 'taken';
-        return 'taken';
+        return 'unknown';
       });
-      return r ?? 'taken';
+      return r ?? 'unknown';
     }
   },
 
@@ -422,7 +422,7 @@ const PLATFORMS = [
       const { status, body } = await httpGet(`https://www.pinterest.com/${n}/`);
       if (status === 404 || body.includes('"notFound"')) return 'free';
       if (status === 200 && body.includes('"username"')) return 'taken';
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -454,7 +454,7 @@ const PLATFORMS = [
       const { status, body } = await httpGet(`https://t.me/${n}`, { 'Accept': 'text/html' });
       if (status === 404 || body.includes('tgme_page_description_empty') || body.includes('If you have Telegram')) return 'free';
       if (body.includes('tgme_page_title') || body.includes('tgme_page_description')) return 'taken';
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -468,9 +468,9 @@ const PLATFORMS = [
         if (res.status() === 404) return 'free';
         const c = await page.content();
         if (c.includes("This content isn") || c.includes('Page Not Found')) return 'free';
-        return 'taken';
+        return 'unknown';
       });
-      return r ?? 'taken';
+      return r ?? 'unknown';
     }
   },
 
@@ -487,7 +487,7 @@ const PLATFORMS = [
       if (status === 200) {
         try { const j = JSON.parse(body); if (j?.data?.user) return 'taken'; } catch {}
       }
-      return status === 404 ? 'free' : status === 0 ? 'free' : 'taken';
+      return status === 404 ? 'free' : 'unknown';
     }
   },
 
@@ -501,7 +501,7 @@ const PLATFORMS = [
       );
       if (status === 400 || status === 404) return 'free';
       if (status === 200 && body.includes('"handle"')) return 'taken';
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -513,7 +513,7 @@ const PLATFORMS = [
       const { status, body } = await httpGet(`https://mastodon.social/api/v1/accounts/lookup?acct=${n}`);
       if (status === 404) return 'free';
       if (status === 200 && body.includes('"username"')) return 'taken';
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -523,7 +523,7 @@ const PLATFORMS = [
     url: n => `https://${n}.tumblr.com`,
     check: async n => {
       const s = await httpHead(`https://${n}.tumblr.com`);
-      return s === 404 ? 'free' : s === 0 ? 'free' : 'taken';
+      return s === 404 ? 'free' : 'unknown';
     }
   },
 
@@ -562,7 +562,7 @@ const PLATFORMS = [
       const s = await httpHead(`https://${n}.substack.com`);
       if (s === 200) return 'taken';
       if (s === 404) return 'free';
-      return s === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -576,7 +576,7 @@ const PLATFORMS = [
         try { const j = JSON.parse(body); if (j?.data?.length === 0) return 'free'; if (j?.data?.length > 0) return 'taken'; } catch {}
       }
       const s = await httpHead(`https://www.patreon.com/${n}`);
-      return s === 404 ? 'free' : s === 0 ? 'free' : 'taken';
+      return s === 404 ? 'free' : 'unknown';
     }
   },
 
@@ -588,7 +588,7 @@ const PLATFORMS = [
       const { status, body } = await httpGet(`https://soundcloud.com/${n}`, { 'Accept': 'text/html' });
       if (status === 404 || body.includes('"status":404') || body.includes('not found')) return 'free';
       if (status === 200 && body.length > 3000) return 'taken';
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -600,7 +600,7 @@ const PLATFORMS = [
       const { status, body } = await httpGet(`https://open.spotify.com/user/${n}`);
       if (status === 404 || body.includes('User not found')) return 'free';
       if (status === 200 && body.includes('"type":"user"')) return 'taken';
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -610,7 +610,7 @@ const PLATFORMS = [
     url: n => `https://www.flickr.com/people/${n}`,
     check: async n => {
       const s = await httpHead(`https://www.flickr.com/people/${n}`);
-      return s === 404 ? 'free' : s === 0 ? 'free' : 'taken';
+      return s === 404 ? 'free' : 'unknown';
     }
   },
 
@@ -621,7 +621,7 @@ const PLATFORMS = [
     check: async n => {
       const { status, body } = await httpGet(`https://imgur.com/user/${n}`);
       if (status === 404 || body.includes('User Not Found')) return 'free';
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -631,7 +631,7 @@ const PLATFORMS = [
     url: n => `https://vimeo.com/${n}`,
     check: async n => {
       const s = await httpHead(`https://vimeo.com/${n}`);
-      return s === 404 ? 'free' : s === 0 ? 'free' : 'taken';
+      return s === 404 ? 'free' : 'unknown';
     }
   },
 
@@ -646,7 +646,7 @@ const PLATFORMS = [
       const { status: s2, body: b2 } = await httpGet(`https://rumble.com/user/${n}`, { 'Accept': 'text/html' });
       if (s2 === 404 || b2.includes('not found')) return 'free';
       if (s2 === 200 && b2.length > 3000) return 'taken';
-      return s2 === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -658,7 +658,7 @@ const PLATFORMS = [
       const { status, body } = await httpGet(`https://letterboxd.com/${n}/`);
       if (status === 404 || body.includes('page-not-found')) return 'free';
       if (status === 200 && body.length > 5000) return 'taken';
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -668,7 +668,7 @@ const PLATFORMS = [
     url: n => `https://www.goodreads.com/${n}`,
     check: async n => {
       const s = await httpHead(`https://www.goodreads.com/${n}`);
-      return s === 404 ? 'free' : s === 0 ? 'free' : 'taken';
+      return s === 404 ? 'free' : 'unknown';
     }
   },
 
@@ -700,7 +700,7 @@ const PLATFORMS = [
     url: n => `https://www.behance.net/${n}`,
     check: async n => {
       const s = await httpHead(`https://www.behance.net/${n}`);
-      return s === 404 ? 'free' : s === 0 ? 'free' : 'taken';
+      return s === 404 ? 'free' : 'unknown';
     }
   },
 
@@ -710,7 +710,7 @@ const PLATFORMS = [
     url: n => `https://dribbble.com/${n}`,
     check: async n => {
       const s = await httpHead(`https://dribbble.com/${n}`);
-      return s === 404 ? 'free' : s === 0 ? 'free' : 'taken';
+      return s === 404 ? 'free' : 'unknown';
     }
   },
 
@@ -721,7 +721,7 @@ const PLATFORMS = [
     check: async n => {
       const { status, body } = await httpGet(`https://www.deviantart.com/${n}`);
       if (status === 404 || body.includes('This user does not exist')) return 'free';
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -754,7 +754,7 @@ const PLATFORMS = [
     check: async n => {
       const { status, body } = await httpGet(`https://vk.com/${n}`);
       if (status === 404 || body.includes('page_not_found')) return 'free';
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -765,7 +765,7 @@ const PLATFORMS = [
     check: async n => {
       const { status, body } = await httpGet(`https://www.wattpad.com/user/${n}`);
       if (status === 404 || body.includes('not found')) return 'free';
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -776,7 +776,7 @@ const PLATFORMS = [
     check: async n => {
       const { status, body } = await httpGet(`https://untappd.com/user/${n}`);
       if (status === 404 || body.includes('Sorry, we could not find')) return 'free';
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -800,7 +800,7 @@ const PLATFORMS = [
       const { status: s2, body: b2 } = await httpGet(`https://odysee.com/@${n}`, { 'Accept': 'text/html' });
       if (s2 === 404 || b2.includes('not found')) return 'free';
       if (s2 === 200 && b2.length > 3000) return 'taken';
-      return s2 === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -811,7 +811,7 @@ const PLATFORMS = [
     check: async n => {
       const { status, body } = await httpGet(`https://gab.com/${n}`);
       if (status === 404 || body.includes('not found')) return 'free';
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -832,7 +832,7 @@ const PLATFORMS = [
           if (j?.error) return 'free';
         } catch {}
       }
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
@@ -848,7 +848,7 @@ const PLATFORMS = [
       if (status === 404 || body.includes('"error"')) return 'free';
       if (status === 200 && body.includes('"un"')) return 'taken';
       const s = await httpHead(`https://gettr.com/user/${n}`);
-      return s === 404 ? 'free' : s === 0 ? 'free' : 'taken';
+      return s === 404 ? 'free' : 'unknown';
     }
   },
 
@@ -871,7 +871,7 @@ const PLATFORMS = [
           if (j?.taken === true)  return 'taken';
         } catch {}
       }
-      return status === 0 ? 'free' : 'taken';
+      return 'unknown';
     }
   },
 
