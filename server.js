@@ -316,32 +316,31 @@ const PLATFORMS = [
     name: 'X (Twitter)',
     url: n => `https://x.com/${n}`,
     check: async n => {
-      // unavatar proxies Twitter's CDN — 404 = user doesn't exist
-      const s = await httpHead(`https://unavatar.io/twitter/${n}`);
-      if (s === 404) return 'free';
-      if (s === 200) return 'taken';
-      // Playwright fallback
+      // unavatar.io returns 301 for BOTH free and taken — completely useless
+      // Use Playwright and intercept Twitter's own UserByScreenName GraphQL call
       const r = await pwCheck(async page => {
         let api = null;
         page.on('response', async resp => {
-          if (resp.url().includes('/UserByScreenName') || resp.url().includes('users/by/username')) {
+          if (resp.url().includes('UserByScreenName') || resp.url().includes('ProfileSpotlightsQuery')) {
             try {
               const j = await resp.json().catch(() => null);
-              if (j?.data?.user) api = 'taken';
-              else if (j?.errors?.[0]?.message?.includes('not found')) api = 'free';
+              if (!j) return;
+              if (j?.data?.user?.result) api = 'taken';
+              else if (j?.data?.user === null) api = 'free';
+              else if (j?.errors?.some(e => e.message?.includes('not found'))) api = 'free';
             } catch {}
           }
         });
         const res = await page.goto(`https://x.com/${n}`, { waitUntil: 'domcontentloaded', timeout: 14000 });
-        await jitter(500);
+        await jitter(800);
         if (api) return api;
         if (res.status() === 404) return 'free';
         const c = await page.content();
         if (c.includes('user_not_found') || c.includes('"errors":[{"code":34')) return 'free';
         if (c.includes('"followers_count"') || c.includes('"screen_name"')) return 'taken';
-        return res.status() === 200 && c.length > 10000 ? 'taken' : 'free';
+        return res.status() === 200 && c.length > 10000 ? 'taken' : 'unknown';
       }, 18000);
-      return r ?? 'free';
+      return r ?? 'unknown';
     }
   },
 
@@ -397,16 +396,21 @@ const PLATFORMS = [
     name: 'LinkedIn',
     url: n => `https://www.linkedin.com/in/${n}`,
     check: async n => {
-      const { status, body } = await httpGet(`https://www.linkedin.com/in/${n}`, {
-        'Accept': 'text/html',
-        'sec-fetch-dest': 'document',
-        'sec-fetch-mode': 'navigate',
-      });
-      if (status === 404) return 'free';
-      if (body.includes('profile-not-found') || body.includes('This profile is not available') || body.includes('/404')) return 'free';
-      if (status === 200 && body.length > 3000) return 'taken';
-      if (status === 999 || status === 429) return 'taken'; // rate limited = profile exists
-      return status === 0 ? 'free' : 'taken';
+      // HTTP returns 999 (bot block) — must use Playwright
+      // Missing profile → redirects to /in/unavailable
+      // Existing profile → redirects to /authwall but keeps /in/{n} in redirect_uri
+      const r = await pwCheck(async page => {
+        await page.goto(`https://www.linkedin.com/in/${n}`, { waitUntil: 'domcontentloaded', timeout: 14000 });
+        const finalUrl = page.url();
+        const c = await page.content();
+        if (finalUrl.includes('/in/unavailable')) return 'free';
+        if (c.includes('Page not found') || c.includes('profile-not-found') || c.includes("This page doesn't exist")) return 'free';
+        if (finalUrl.includes('/authwall') && (finalUrl.includes(encodeURIComponent(`/in/${n}`)) || finalUrl.includes(`in%2F${n}`))) return 'taken';
+        if (finalUrl.includes(`/in/${n}`) && !finalUrl.includes('unavailable')) return 'taken';
+        if (c.includes('"publicIdentifier"')) return 'taken';
+        return 'unknown';
+      }, 16000);
+      return r ?? 'unknown';
     }
   },
 
@@ -427,18 +431,18 @@ const PLATFORMS = [
     name: 'Snapchat',
     url: n => `https://www.snapchat.com/add/${n}`,
     check: async n => {
-      const { status, body } = await httpGet(`https://www.snapchat.com/add/${n}`);
-      if (status === 404 || body.includes('"__typename":"UserProfileNotFound"') || body.includes('pageNotFound')) return 'free';
-      if (body.includes('"__typename":"UserProfile"') || body.includes('"snapchatUsername"')) return 'taken';
+      // /add/ does 301/308 redirect — plain HTTP useless, must use Playwright
       const r = await pwCheck(async page => {
-        const res = await page.goto(`https://www.snapchat.com/add/${n}`, { waitUntil: 'networkidle', timeout: 14000 });
-        if (res.status() === 404) return 'free';
+        const res = await page.goto(`https://www.snapchat.com/add/${n}`, { waitUntil: 'domcontentloaded', timeout: 12000 });
+        const finalUrl = page.url();
         const c = await page.content();
-        if (c.includes('UserProfileNotFound') || c.includes('not found')) return 'free';
-        if (c.includes('UserProfile') || c.includes('"displayName"')) return 'taken';
-        return 'taken';
+        if (res.status() === 404) return 'free';
+        if (c.includes('"__typename":"UserProfileNotFound"') || c.includes('pageNotFound') || c.includes("Sorry, we couldn")) return 'free';
+        if (c.includes('"__typename":"UserProfile"') || c.includes('"snapchatUsername"') || c.includes('add-friend')) return 'taken';
+        if (finalUrl.includes(`/@${n}`) && c.length > 3000) return 'taken';
+        return 'unknown';
       });
-      return r ?? 'taken';
+      return r ?? 'unknown';
     }
   },
 
@@ -528,15 +532,25 @@ const PLATFORMS = [
     name: 'Medium',
     url: n => `https://medium.com/@${n}`,
     check: async n => {
-      const r = await pwCheck(async page => {
-        const res = await page.goto(`https://medium.com/@${n}`, { waitUntil: 'domcontentloaded', timeout: 12000 });
-        if (res.status() === 404) return 'free';
-        const c = await page.content();
-        if (c.includes('PageNotFound') || c.includes('does not exist')) return 'free';
-        if (c.includes('"@type":"Person"') || c.includes('"userSlug"')) return 'taken';
-        return res.status() === 200 && c.length > 8000 ? 'taken' : 'free';
+      // Confirmed: taken users get 302 redirect to {n}.medium.com
+      // Missing users get 404 or hang — pure HTTP check, no Playwright needed
+      return new Promise(resolve => {
+        const req = https.request({
+          hostname: 'medium.com', path: `/@${n}`,
+          method: 'GET', timeout: 9000,
+          headers: { 'User-Agent': randUA(), 'Accept': 'text/html' }
+        }, res => {
+          res.resume();
+          const loc = res.headers.location || '';
+          if (res.statusCode === 404) return resolve('free');
+          if ((res.statusCode === 301 || res.statusCode === 302) && loc.includes('.medium.com')) return resolve('taken');
+          if (res.statusCode === 200) return resolve('taken');
+          resolve('unknown');
+        });
+        req.on('error', () => resolve('unknown'));
+        req.on('timeout', () => { req.destroy(); resolve('unknown'); });
+        req.end();
       });
-      return r ?? 'free';
     }
   },
 
@@ -663,12 +677,20 @@ const PLATFORMS = [
     name: 'Strava',
     url: n => `https://www.strava.com/athletes/${n}`,
     check: async n => {
-      const { status, body } = await httpGet(`https://www.strava.com/athletes/${n}`, { 'Accept': 'text/html' });
-      if (status === 404) return 'free';
-      if (body.includes('Oops') && body.includes('find the page')) return 'free';
-      // Strava redirects to login for existing athletes when logged out
-      if (status === 200 || status === 302 || status === 301) return 'taken';
-      return status === 0 ? 'free' : 'taken';
+      // HTTP always returns 307 → /login for both real and fake users — useless
+      // Playwright: existing athlete login redirect preserves /athletes/{n} in URL
+      // Missing athlete just goes to plain /login with no reference to the athlete
+      const r = await pwCheck(async page => {
+        await page.goto(`https://www.strava.com/athletes/${n}`, { waitUntil: 'domcontentloaded', timeout: 12000 });
+        const finalUrl = page.url();
+        const c = await page.content();
+        if (finalUrl.includes(`/athletes/${n}`)) return 'taken';
+        if (finalUrl.includes('redirect_uri') && finalUrl.includes(encodeURIComponent(n))) return 'taken';
+        if (c.includes('404') || c.includes("doesn't exist") || c.includes('not found')) return 'free';
+        if (finalUrl.includes('/login') && !finalUrl.includes(n)) return 'free';
+        return 'unknown';
+      });
+      return r ?? 'unknown';
     }
   },
 
@@ -708,20 +730,20 @@ const PLATFORMS = [
     name: 'ArtStation',
     url: n => `https://www.artstation.com/${n}`,
     check: async n => {
-      const { status, body } = await httpGet(
-        `https://www.artstation.com/users/${n}/quick.json`,
-        { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-      );
+      // /users/{n}/quick.json returns 404 for EVERYONE now — endpoint is dead
+      // Use main profile page — returns clean 404 for missing users
+      const { status, body } = await httpGet(`https://www.artstation.com/${n}`);
       if (status === 404) return 'free';
-      if (status === 200 && body.includes('"username"')) return 'taken';
+      if (body.includes('page-not-found') || body.includes('User Not Found')) return 'free';
+      if (status === 200 && body.length > 3000) return 'taken';
       const r = await pwCheck(async page => {
         const res = await page.goto(`https://www.artstation.com/${n}`, { waitUntil: 'domcontentloaded', timeout: 12000 });
         if (res.status() === 404) return 'free';
         const c = await page.content();
-        if (c.includes('page-not-found') || c.includes('User not found')) return 'free';
-        return res.status() === 200 && c.length > 5000 ? 'taken' : 'free';
+        if (c.includes('page-not-found') || c.includes('User Not Found')) return 'free';
+        return res.status() === 200 && c.length > 3000 ? 'taken' : 'unknown';
       });
-      return r ?? 'free';
+      return r ?? 'unknown';
     }
   },
 
