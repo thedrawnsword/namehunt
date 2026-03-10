@@ -1,0 +1,15 @@
+{
+  "name": "namehunt",
+  "version": "1.0.0",
+  "description": "Username availability checker",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "playwright": "^1.58.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

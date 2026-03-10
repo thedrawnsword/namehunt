@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NameHunt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080810;--surface:#0f0f1a;--s2:#141422;--border:#1f1f35;--border2:#2a2a45;
+  --accent:#7c6ff7;--a2:#a78bfa;--a3:#c4b5fd;
+  --green:#22d98a;--red:#f4615a;--yellow:#f5a623;--blue:#38bdf8;
+  --muted:#4a4a70;--muted2:#6b6b95;--text:#ddddf5;--text2:#8888b0;
+}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;padding:2.5rem 1rem 6rem;}
+body::before{content:'';position:fixed;inset:0;z-index:0;
+  background-image:linear-gradient(rgba(124,111,247,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(124,111,247,.03) 1px,transparent 1px);
+  background-size:48px 48px;pointer-events:none;}
+.wrap{position:relative;z-index:1;max-width:960px;margin:0 auto;}
+
+header{text-align:center;margin-bottom:2.5rem;}
+.logo{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;letter-spacing:-2px;
+  background:linear-gradient(135deg,#7c6ff7,#a78bfa,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.sub{font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted2);margin-top:5px;}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.6rem;margin-bottom:1rem;}
+.clabel{font-family:'Space Mono',monospace;font-size:.63rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted2);margin-bottom:.75rem;}
+hr.div{border:none;border-top:1px solid var(--border);margin:1.3rem 0;}
+.row{display:flex;gap:.6rem;flex-wrap:wrap;}
+input{flex:1;min-width:160px;background:var(--s2);border:1px solid var(--border2);border-radius:10px;color:var(--text);
+  font-family:'Space Mono',monospace;font-size:.9rem;padding:.7rem 1rem;outline:none;transition:border-color .2s,box-shadow .2s;}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,111,247,.12);}
+input::placeholder{color:var(--muted);}
+button{cursor:pointer;border:none;font-family:'Syne',sans-serif;font-weight:700;border-radius:10px;transition:all .15s;white-space:nowrap;}
+button:active{transform:scale(.97);}
+button:disabled{opacity:.35;cursor:not-allowed;pointer-events:none;}
+.btn-p{background:var(--accent);color:#fff;padding:.7rem 1.3rem;font-size:.9rem;}
+.btn-p:hover{background:var(--a2);}
+.btn-stop{background:var(--red);color:#fff;padding:.7rem 1.2rem;font-size:.9rem;}
+.btn-g{background:var(--s2);color:var(--text);border:1px solid var(--border2);padding:.7rem 1.1rem;font-size:.85rem;}
+.btn-g:hover{border-color:var(--accent);color:var(--a2);}
+.btn-ai{background:linear-gradient(135deg,#6d28d9,#7c6ff7);color:#fff;padding:.7rem 1.2rem;font-size:.85rem;}
+
+.ai-header{display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;}
+.ai-badge{background:linear-gradient(135deg,#6d28d9,#7c6ff7);color:#fff;font-size:.58rem;font-weight:800;
+  padding:.15rem .5rem;border-radius:20px;letter-spacing:1px;text-transform:uppercase;}
+.ai-desc{font-size:.8rem;color:var(--text2);margin-bottom:.8rem;}
+.tog-row{display:flex;align-items:center;gap:.5rem;margin-top:.75rem;cursor:pointer;user-select:none;font-size:.82rem;color:var(--text2);}
+.tog{width:34px;height:18px;border-radius:99px;position:relative;transition:background .2s;flex-shrink:0;}
+.tog::after{content:'';position:absolute;top:2px;width:14px;height:14px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 4px rgba(0,0,0,.4);}
+.tog.on{background:var(--accent);}.tog.on::after{left:18px;}
+.tog.off{background:var(--border2);}.tog.off::after{left:2px;}
+
+.status-bar{min-height:2.2rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;font-size:.82rem;color:var(--text2);padding:.2rem 0;}
+.spin{width:12px;height:12px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.rtag{background:var(--s2);border:1px solid var(--border2);border-radius:99px;padding:.15rem .55rem;font-size:.7rem;font-weight:600;color:var(--a2);font-family:'Space Mono',monospace;}
+.gtag{background:rgba(34,217,138,.1);border:1px solid rgba(34,217,138,.2);border-radius:99px;padding:.15rem .55rem;font-size:.7rem;font-weight:600;color:var(--green);font-family:'Space Mono',monospace;}
+
+.prog-wrap{margin-bottom:1rem;}
+.prog-meta{display:flex;justify-content:space-between;margin-bottom:.35rem;font-family:'Space Mono',monospace;font-size:.7rem;color:var(--text2);}
+.prog-bg{background:var(--s2);border-radius:99px;height:4px;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--a2),var(--blue));border-radius:99px;transition:width .2s;width:0;}
+
+.race-section{margin-bottom:1.2rem;}
+.race-title{font-family:'Space Mono',monospace;font-size:.63rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);margin-bottom:.65rem;}
+.race-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.6rem;}
+.racer{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.85rem 1rem;transition:border-color .3s,background .3s;}
+.racer.lead{border-color:var(--green);background:rgba(34,217,138,.05);}
+.racer.losing{border-color:rgba(244,97,90,.3);}
+.r-name{font-family:'Space Mono',monospace;font-size:.88rem;font-weight:700;color:var(--a2);margin-bottom:.4rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.r-stats{font-size:.74rem;color:var(--text2);display:flex;gap:.4rem;flex-wrap:wrap;}
+.r-free{color:var(--green);font-weight:700;}.r-taken{color:var(--red);font-weight:700;}.r-unk{color:var(--muted2);}
+.r-bar-bg{height:3px;background:var(--border);border-radius:99px;margin-top:.5rem;overflow:hidden;}
+.r-bar{height:100%;border-radius:99px;transition:width .2s,background .3s;width:0;background:var(--border2);}
+.r-bar.winning{background:var(--green);}.r-bar.taking{background:var(--red);}
+
+.res-header{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin-bottom:1rem;}
+.res-header h2{font-size:1rem;font-weight:700;}
+.name-pill{font-family:'Space Mono',monospace;background:var(--s2);border:1px solid var(--border2);padding:.2rem .75rem;border-radius:99px;font-size:.9rem;color:var(--a2);}
+.pills{display:flex;gap:.4rem;flex-wrap:wrap;margin-left:auto;}
+.badge{display:inline-flex;align-items:center;gap:.3rem;padding:.22rem .65rem;border-radius:6px;font-size:.72rem;font-weight:700;}
+.dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0;}
+.b-free{background:rgba(34,217,138,.1);color:var(--green);}
+.b-taken{background:rgba(244,97,90,.12);color:var(--red);}
+.b-unk{background:rgba(245,166,35,.1);color:var(--yellow);}
+
+.filter-row{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.8rem;align-items:center;justify-content:space-between;}
+.filter-btns{display:flex;gap:.4rem;flex-wrap:wrap;}
+.fbtn{font-family:'Space Mono',monospace;font-size:.68rem;padding:.3rem .75rem;border-radius:99px;
+  background:transparent;border:1px solid var(--border2);color:var(--muted2);cursor:pointer;transition:all .15s;}
+.fbtn:hover,.fbtn.on{border-color:var(--accent);color:var(--a2);background:rgba(124,111,247,.08);}
+.fbtn:hover{transform:none;}
+.copy-btn{font-family:'Space Mono',monospace;font-size:.68rem;padding:.3rem .8rem;border-radius:99px;
+  background:transparent;border:1px solid var(--border2);color:var(--muted2);cursor:pointer;transition:all .15s;}
+.copy-btn:hover{border-color:var(--green);color:var(--green);}
+
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:.55rem;}
+.pcard{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:.75rem 1rem;
+  display:flex;align-items:center;justify-content:space-between;gap:.5rem;transition:border-color .2s;
+  animation:fadeup .18s ease both;}
+.pcard:hover{border-color:var(--border2);}
+.pcard.free{border-left:2px solid var(--green);}
+.pcard.taken{border-left:2px solid rgba(244,97,90,.4);opacity:.6;}
+.pname{font-size:.83rem;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.open-link{color:var(--muted2);text-decoration:none;font-size:.75rem;flex-shrink:0;transition:color .15s;margin-left:4px;}
+.open-link:hover{color:var(--a2);}
+@keyframes fadeup{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+.hist-section{margin-top:1.5rem;}
+.hist-title{font-family:'Space Mono',monospace;font-size:.63rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);margin-bottom:.7rem;}
+.hist-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.6rem 1rem;
+  display:flex;align-items:center;gap:1rem;flex-wrap:wrap;font-size:.83rem;margin-bottom:.45rem;}
+.hname{font-family:'Space Mono',monospace;color:var(--a2);font-weight:700;}
+.hstats{display:flex;gap:.55rem;font-size:.77rem;flex:1;flex-wrap:wrap;}
+.hstats .f{color:var(--green);}.hstats .t{color:var(--red);}.hstats .u{color:var(--muted2);}
+.recheck-btn{background:var(--s2);border:1px solid var(--border2);color:var(--text2);
+  font-size:.72rem;padding:.25rem .65rem;border-radius:6px;font-family:'Space Mono',monospace;cursor:pointer;transition:all .15s;}
+.recheck-btn:hover{border-color:var(--accent);color:var(--a2);}
+
+/* unknown-note legend */
+.legend{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted2);margin-bottom:.7rem;line-height:1.6;}
+.legend span{color:var(--yellow);}
+
+@media(max-width:500px){.row{flex-direction:column;}#grid{grid-template-columns:1fr 1fr;}.race-grid{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">NameHunt</div>
+    <div class="sub">103 platforms · server-side checks · no proxy needed</div>
+  </header>
+
+  <div class="card">
+    <div class="clabel">↳ Check a username</div>
+    <div class="row">
+      <input id="nameInput" type="text" placeholder="e.g. darkwolf" maxlength="30" spellcheck="false" autocomplete="off">
+      <button class="btn-p" id="checkBtn" onclick="startCheck()">Hunt it</button>
+      <button class="btn-stop" id="stopBtn" style="display:none" onclick="stopAll()">■ Stop</button>
+    </div>
+    <hr class="div">
+    <div>
+      <div class="ai-header">
+        <div class="clabel" style="margin:0">AI Name Generator</div>
+        <span class="ai-badge">AI</span>
+      </div>
+      <p class="ai-desc">Describe yourself — generates 5 names per round, checks all of them, learns from what's taken.</p>
+      <div class="row">
+        <input id="descInput" type="text" placeholder="e.g. dark moody photographer obsessed with wolves" maxlength="120" spellcheck="false">
+        <button class="btn-ai" id="aiBtn" onclick="startAI()">✦ Generate &amp; Hunt</button>
+      </div>
+      <div class="tog-row" onclick="toggleAuto()">
+        <div class="tog on" id="togEl"></div>
+        <span>Keep going until username is free everywhere</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-bar" id="statusEl"></div>
+  <div class="prog-wrap" id="progWrap" style="display:none">
+    <div class="prog-meta"><span id="progLabel"></span><span id="progCount"></span></div>
+    <div class="prog-bg"><div class="prog-fill" id="progFill"></div></div>
+  </div>
+
+  <div id="raceSection" style="display:none" class="race-section">
+    <div class="race-title" id="raceTitle"></div>
+    <div class="race-grid" id="raceGrid"></div>
+  </div>
+
+  <div id="resSection" style="display:none">
+    <div class="res-header">
+      <h2>Results for</h2>
+      <span class="name-pill" id="resName"></span>
+      <div class="pills" id="resPills"></div>
+    </div>
+    <div class="legend">
+      <span>Unknown</span> = platform uses login walls, phone numbers, or JavaScript rendering — visit the link to check manually.
+    </div>
+    <div class="filter-row">
+      <div class="filter-btns">
+        <button class="fbtn on" onclick="setFilter('all',this)">All</button>
+        <button class="fbtn" onclick="setFilter('free',this)">✓ Free</button>
+        <button class="fbtn" onclick="setFilter('taken',this)">✗ Taken</button>
+        <button class="fbtn" onclick="setFilter('unknown',this)">? Unknown</button>
+      </div>
+      <button class="copy-btn" onclick="copyFree()">Copy free links</button>
+    </div>
+    <div id="grid"></div>
+  </div>
+
+  <div id="histSection" class="hist-section" style="display:none">
+    <div class="hist-title">Previous hunts</div>
+    <div id="histList"></div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// Platform list — mirrors server.js PLATFORMS array exactly.
+// Used only for URL generation and the profile link ↗ in the grid.
+// All actual availability checks happen server-side via SSE /check endpoint.
+// ─────────────────────────────────────────────────────────────────────────────
+const PLATFORM_URLS = {
+  'YouTube':        n => `https://www.youtube.com/@${n}`,
+  'Instagram':      n => `https://www.instagram.com/${n}/`,
+  'TikTok':         n => `https://www.tiktok.com/@${n}`,
+  'Facebook':       n => `https://www.facebook.com/${n}`,
+  'Snapchat':       n => `https://www.snapchat.com/add/${n}`,
+  'WhatsApp':       n => `https://wa.me/${n}`,
+  'X (Twitter)':    n => `https://x.com/${n}`,
+  'Telegram':       n => `https://t.me/${n}`,
+  'Discord':        n => `https://discord.com/users/${n}`,
+  'Reddit':         n => `https://www.reddit.com/user/${n}`,
+  'Pinterest':      n => `https://www.pinterest.com/${n}/`,
+  'LinkedIn':       n => `https://www.linkedin.com/in/${n}`,
+  'Twitch':         n => `https://www.twitch.tv/${n}`,
+  'Threads':        n => `https://www.threads.net/@${n}`,
+  'WeChat':         n => `https://web.wechat.com/${n}`,
+  'QQ':             n => `https://user.qzone.qq.com/${n}`,
+  'Tumblr':         n => `https://${n}.tumblr.com`,
+  'VK':             n => `https://vk.com/${n}`,
+  'Line':           n => `https://line.me/ti/p/~${n}`,
+  'Viber':          n => `https://invite.viber.com/?g=${n}`,
+  'Signal':         n => `https://signal.me/#p/${n}`,
+  'Messenger':      n => `https://m.me/${n}`,
+  'KakaoTalk':      n => `https://open.kakao.com/o/${n}`,
+  'Likee':          n => `https://likee.video/@${n}`,
+  'Bigo Live':      n => `https://www.bigo.tv/${n}`,
+  'Triller':        n => `https://triller.co/@${n}`,
+  'Clubhouse':      n => `https://www.joinclubhouse.com/@${n}`,
+  'BeReal':         n => `https://bere.al/${n}`,
+  'Rumble':         n => `https://rumble.com/user/${n}`,
+  'Odysee':         n => `https://odysee.com/@${n}`,
+  'BitChute':       n => `https://www.bitchute.com/channel/${n}/`,
+  'Dailymotion':    n => `https://www.dailymotion.com/${n}`,
+  'Vimeo':          n => `https://vimeo.com/${n}`,
+  'Trovo':          n => `https://trovo.live/${n}`,
+  'Nimo TV':        n => `https://www.nimo.tv/${n}`,
+  'DLive':          n => `https://dlive.tv/${n}`,
+  'AfreecaTV':      n => `https://bj.afreecatv.com/${n}`,
+  'Caffeine':       n => `https://www.caffeine.tv/${n}`,
+  'Flickr':         n => `https://www.flickr.com/people/${n}`,
+  'Imgur':          n => `https://imgur.com/user/${n}`,
+  'Meetup':         n => `https://www.meetup.com/members/${n}`,
+  'Nextdoor':       n => `https://nextdoor.com/profile/${n}`,
+  'Patreon':        n => `https://www.patreon.com/${n}`,
+  'Substack':       n => `https://${n}.substack.com`,
+  'Medium':         n => `https://medium.com/@${n}`,
+  'SoundCloud':     n => `https://soundcloud.com/${n}`,
+  'Spotify':        n => `https://open.spotify.com/user/${n}`,
+  'Apple Music Social': n => `https://music.apple.com/profile/${n}`,
+  'Smule':          n => `https://www.smule.com/${n}`,
+  'BandLab':        n => `https://www.bandlab.com/${n}`,
+  'ReverbNation':   n => `https://www.reverbnation.com/${n}`,
+  'Couchsurfing':   n => `https://www.couchsurfing.com/people/${n}`,
+  'Untappd':        n => `https://untappd.com/user/${n}`,
+  'Strava':         n => `https://www.strava.com/athletes/${n}`,
+  'Letterboxd':     n => `https://letterboxd.com/${n}`,
+  'Goodreads':      n => `https://www.goodreads.com/${n}`,
+  'Wattpad':        n => `https://www.wattpad.com/user/${n}`,
+  'Amino':          n => `https://aminoapps.com/u/${n}`,
+  'Hoop':           n => `https://hoop.app/${n}`,
+  'Yubo':           n => `https://yubo.live/${n}`,
+  'Skout':          n => `https://www.skout.com/user/${n}`,
+  'Tagged':         n => `https://www.tagged.com/${n}`,
+  'Badoo':          n => `https://badoo.com/en/${n}`,
+  'OkCupid':        n => `https://www.okcupid.com/profile/${n}`,
+  'Tinder':         n => `https://tinder.com/@${n}`,
+  'Bumble':         n => `https://bumble.com/en/profile/${n}`,
+  'Hinge':          n => `https://hinge.co/${n}`,
+  'Plenty of Fish': n => `https://www.pof.com/viewprofile.aspx?profile_id=${n}`,
+  'Tantan':         n => `https://tantanapp.com/${n}`,
+  'Momo':           n => `https://www.immomo.com/${n}`,
+  'ShareChat':      n => `https://sharechat.com/profile/${n}`,
+  'Moj':            n => `https://mojapp.in/@${n}`,
+  'Chingari':       n => `https://chingari.io/${n}`,
+  'Roposo':         n => `https://www.roposo.com/${n}`,
+  'Josh':           n => `https://share.myjosh.in/${n}`,
+  'Zynn':           n => `https://zynn.app/${n}`,
+  'Dubsmash':       n => `https://www.dubsmash.com/@${n}`,
+  'Byte':           n => `https://byte.co/@${n}`,
+  'Periscope':      n => `https://www.pscp.tv/${n}`,
+  'Mastodon':       n => `https://mastodon.social/@${n}`,
+  'Bluesky':        n => `https://bsky.app/profile/${n}.bsky.social`,
+  'Lemon8':         n => `https://www.lemon8-app.com/@${n}`,
+  'Kwai':           n => `https://www.kwai.com/@${n}`,
+  'KakaoStory':     n => `https://story.kakao.com/${n}`,
+  'MeWe':           n => `https://mewe.com/i/${n}`,
+  'Minds':          n => `https://www.minds.com/${n}`,
+  'Ello':           n => `https://ello.co/${n}`,
+  'Friendica':      n => `https://friendica.eu/profile/${n}`,
+  'Diaspora':       n => `https://diaspora.social/u/${n}`,
+  'Hive Social':    n => `https://hivesocial.app/${n}`,
+  'CounterSocial':  n => `https://counter.social/@${n}`,
+  'Steemit':        n => `https://steemit.com/@${n}`,
+  'Peeks':          n => `https://peeks.com/${n}`,
+  'Gab':            n => `https://gab.com/${n}`,
+  'Parler':         n => `https://parler.com/${n}`,
+  'Truth Social':   n => `https://truthsocial.com/@${n}`,
+  'Gettr':          n => `https://gettr.com/user/${n}`,
+  'Locals':         n => `https://${n}.locals.com`,
+  'Fanbase':        n => `https://fanbase.com/${n}`,
+  'Threads Lite':   n => `https://www.threads.net/@${n}`,
+};
+
+const TOTAL_PLATFORMS = Object.keys(PLATFORM_URLS).length;
+
+// ── State ───────────────────────────────────────────────────────────────────
+let running = false, stopReq = false, autoLoop = true;
+let currentES = null;
+let aiDesc = '', aiPrev = [], aiFeedback = [], aiRound = 0, aiBest = null;
+let history = [], allResults = [], currentFilter = 'all';
+
+const $id = id => document.getElementById(id);
+const $s  = html => $id('statusEl').innerHTML = html;
+
+function setRunning(v) {
+  running = v;
+  $id('checkBtn').disabled = v;
+  $id('aiBtn').disabled = v;
+  $id('stopBtn').style.display = v ? '' : 'none';
+  $id('progWrap').style.display = v ? '' : 'none';
+}
+function setProgress(done, total, label) {
+  $id('progLabel').textContent = label || '';
+  $id('progCount').textContent = `${done} / ${total}`;
+  $id('progFill').style.width = total > 0 ? (done / total * 100) + '%' : '0%';
+}
+function toggleAuto() {
+  autoLoop = !autoLoop;
+  $id('togEl').className = 'tog ' + (autoLoop ? 'on' : 'off');
+}
+function stopAll() {
+  stopReq = true;
+  if (currentES) { currentES.close(); currentES = null; }
+  setRunning(false);
+  $id('raceSection').style.display = 'none';
+  $s('Stopped.');
+}
+
+// ── Single check ─────────────────────────────────────────────────────────────
+function startCheck() {
+  const name = $id('nameInput').value.trim().toLowerCase().replace(/[^a-z0-9_.]/g, '');
+  if (!name) return;
+  stopReq = false;
+  doCheck(name);
+}
+
+async function doCheck(name) {
+  if (running) return;
+  setRunning(true);
+  stopReq = false;
+
+  $id('raceSection').style.display = 'none';
+  $id('resSection').style.display = '';
+  $id('resName').textContent = name;
+  $id('resPills').innerHTML = '';
+  $id('grid').innerHTML = '';
+  allResults = [];
+
+  const counts = { free: 0, taken: 0, unknown: 0, takenPlatforms: [], freePlatforms: [] };
+  $s(`<div class="spin"></div>&nbsp;Checking <b style="color:var(--a2)">@${name}</b> across ${TOTAL_PLATFORMS} platforms…`);
+  setProgress(0, TOTAL_PLATFORMS, `Checking @${name}…`);
+
+  return new Promise(resolve => {
+    const es = new EventSource(`/check?name=${encodeURIComponent(name)}`);
+    currentES = es;
+
+    es.onmessage = e => {
+      const d = JSON.parse(e.data);
+
+      if (d.type === 'start') {
+        setProgress(0, d.total || TOTAL_PLATFORMS, `Checking @${name}…`);
+        return;
+      }
+
+      if (d.type === 'result') {
+        // Use server URL if provided, else build from our map
+        const url = d.url || (PLATFORM_URLS[d.platform] ? PLATFORM_URLS[d.platform](name) : '');
+        allResults.push({ platform: d.platform, result: d.result, url });
+        if (d.result === 'free')        { counts.free++;    counts.freePlatforms.push(d.platform); }
+        else if (d.result === 'taken')  { counts.taken++;   counts.takenPlatforms.push(d.platform); }
+        else                             { counts.unknown++; }
+        setProgress(d.done, d.total || TOTAL_PLATFORMS, `Checking @${name}…`);
+        $s(`<div class="spin"></div>&nbsp;<span style="color:var(--green)">${counts.free} free</span> · <span style="color:var(--red)">${counts.taken} taken</span> · <span style="color:var(--muted2)">${counts.unknown} unknown</span> — ${d.done} checked`);
+        renderGrid();
+        $id('resPills').innerHTML = pillsHtml(counts);
+        return;
+      }
+
+      if (d.type === 'done' || d.type === 'error') {
+        es.close();
+        currentES = null;
+        setRunning(false);
+        if (d.type === 'error') { $s('Error: ' + d.message); resolve(counts); return; }
+        $s(counts.taken === 0
+          ? `🎉 <b style="color:var(--green)">@${name}</b> looks free everywhere!`
+          : `<b style="color:var(--a2)">@${name}</b> — ${counts.free} free · <span style="color:var(--red)">${counts.taken} taken</span> · ${counts.unknown} unknown`);
+        addHistory(name, counts);
+        resolve(counts);
+      }
+    };
+
+    es.onerror = () => {
+      es.close();
+      currentES = null;
+      setRunning(false);
+      resolve(counts);
+    };
+  });
+}
+
+// ── AI Loop ──────────────────────────────────────────────────────────────────
+async function startAI() {
+  const desc = $id('descInput').value.trim();
+  if (!desc) { $id('descInput').focus(); return; }
+  stopReq = false;
+  if (desc !== aiDesc) { aiDesc = desc; aiPrev = []; aiFeedback = []; aiRound = 0; aiBest = null; }
+  setRunning(true);
+  await runAIRound();
+  if (!stopReq) setRunning(false);
+}
+
+async function runAIRound() {
+  if (stopReq) return;
+  aiRound++;
+  const bestNote = aiBest ? ` <span class="gtag">Best: @${aiBest.name} (${aiBest.taken} taken)</span>` : '';
+  $s(`<div class="spin"></div>&nbsp;Round ${aiRound} — generating names… <span class="rtag">Round ${aiRound}</span>${bestNote}`);
+  setProgress(0, 0, `Round ${aiRound} — generating…`);
+
+  let names;
+  try {
+    const r = await fetch('/generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: aiDesc, previousNames: aiPrev, feedback: aiFeedback })
+    });
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    names = data.names;
+  } catch(e) { $s('Error: ' + e.message); setRunning(false); return; }
+
+  if (stopReq) { setRunning(false); return; }
+  names.forEach(n => { if (!aiPrev.includes(n)) aiPrev.push(n); });
+
+  // Race UI
+  $id('raceSection').style.display = '';
+  $id('raceTitle').textContent = `Round ${aiRound} — checking ${names.length} names across ${TOTAL_PLATFORMS} platforms`;
+  $id('resSection').style.display = 'none';
+  $id('raceGrid').innerHTML = '';
+
+  const racers = {};
+  for (const name of names) {
+    const div = document.createElement('div');
+    div.className = 'racer';
+    div.innerHTML = `<div class="r-name">@${name}</div>
+      <div class="r-stats">
+        <span class="r-free"  id="rf_${name}">0 free</span>
+        <span class="r-taken" id="rt_${name}">0 taken</span>
+        <span class="r-unk"   id="ru_${name}">0 unk</span>
+      </div>
+      <div class="r-bar-bg"><div class="r-bar" id="rb_${name}"></div></div>`;
+    $id('raceGrid').appendChild(div);
+    racers[name] = { el: div, free: 0, taken: 0, unknown: 0, takenPlatforms: [], freePlatforms: [], platforms: [] };
+  }
+
+  $s(`<div class="spin"></div>&nbsp;Round ${aiRound} — checking… <span class="rtag">Round ${aiRound}</span>`);
+  setProgress(0, TOTAL_PLATFORMS * names.length, `Round ${aiRound}…`);
+
+  let totalDone = 0;
+
+  await Promise.all(names.map(name => new Promise(resolve => {
+    if (stopReq) { resolve(); return; }
+    const r = racers[name];
+    const es = new EventSource(`/check?name=${encodeURIComponent(name)}`);
+
+    es.onmessage = e => {
+      const d = JSON.parse(e.data);
+      if (d.type === 'result') {
+        const url = d.url || (PLATFORM_URLS[d.platform] ? PLATFORM_URLS[d.platform](name) : '');
+        r.platforms.push({ platform: d.platform, result: d.result, url });
+        if (d.result === 'free')       { r.free++;    r.freePlatforms.push(d.platform); }
+        else if (d.result === 'taken') { r.taken++;   r.takenPlatforms.push(d.platform); }
+        else                            { r.unknown++; }
+        totalDone++;
+        setProgress(totalDone, TOTAL_PLATFORMS * names.length, `Round ${aiRound}…`);
+
+        const rf = $id(`rf_${name}`), rt = $id(`rt_${name}`), ru = $id(`ru_${name}`);
+        if (rf) rf.textContent = r.free    + ' free';
+        if (rt) rt.textContent = r.taken   + ' taken';
+        if (ru) ru.textContent = r.unknown + ' unk';
+
+        const checked = r.free + r.taken + r.unknown;
+        const bar = $id(`rb_${name}`);
+        if (bar) {
+          bar.style.width = (checked / TOTAL_PLATFORMS * 100) + '%';
+          bar.className = 'r-bar' + (r.taken > 2 ? ' taking' : r.free > 5 ? ' winning' : '');
+        }
+        const minT = Math.min(...Object.values(racers).map(x => x.taken));
+        for (const rx of Object.values(racers))
+          rx.el.className = 'racer' + (rx.taken === minT && rx.free > 0 ? ' lead' : rx.taken > minT + 3 ? ' losing' : '');
+      }
+      if (d.type === 'done' || d.type === 'error') { es.close(); resolve(); }
+    };
+    es.onerror = () => { es.close(); resolve(); };
+  })));
+
+  if (stopReq) { setRunning(false); return; }
+
+  const [winName, winData] = Object.entries(racers)
+    .sort((a, b) => a[1].taken - b[1].taken || b[1].free - a[1].free)[0];
+
+  for (const [n, r] of Object.entries(racers))
+    aiFeedback.push({ name: n, takenCount: r.taken, freeCount: r.free, takenPlatforms: r.takenPlatforms, freePlatforms: r.freePlatforms });
+
+  if (!aiBest || winData.taken < aiBest.taken) aiBest = { name: winName, taken: winData.taken };
+
+  $id('raceSection').style.display = 'none';
+  $id('resSection').style.display = '';
+  $id('resName').textContent = winName;
+  allResults = winData.platforms;
+  currentFilter = 'all';
+  document.querySelectorAll('.fbtn').forEach((b, i) => b.classList.toggle('on', i === 0));
+  renderGrid();
+  $id('resPills').innerHTML = pillsHtml({ free: winData.free, taken: winData.taken, unknown: winData.unknown });
+  $id('nameInput').value = winName;
+  addHistory(winName, { free: winData.free, taken: winData.taken, unknown: winData.unknown, takenPlatforms: winData.takenPlatforms, freePlatforms: winData.freePlatforms });
+
+  if (winData.taken === 0 || !autoLoop || stopReq) {
+    $s(winData.taken === 0
+      ? `🎉 <b style="color:var(--green)">@${winName}</b> is free everywhere! Found in ${aiRound} rounds.`
+      : `Round ${aiRound}: best is <b style="color:var(--a2)">@${winName}</b> — ${winData.free} free · <span style="color:var(--red)">${winData.taken} taken</span>`);
+    setRunning(false);
+  } else {
+    $s(`Round ${aiRound} best: <b style="color:var(--a2)">@${winName}</b> — ${winData.free} free · <span style="color:var(--red)">${winData.taken} taken</span> — trying again… <span class="rtag">Round ${aiRound}</span>`);
+    await new Promise(r => setTimeout(r, 300));
+    await runAIRound();
+  }
+}
+
+// ── Rendering ────────────────────────────────────────────────────────────────
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderGrid();
+}
+
+function renderGrid() {
+  const filtered = currentFilter === 'all' ? allResults : allResults.filter(r => r.result === currentFilter);
+  const order = { free: 0, taken: 1, unknown: 2 };
+  const sorted = [...filtered].sort((a, b) => (order[a.result] ?? 3) - (order[b.result] ?? 3));
+  $id('grid').innerHTML = sorted.map(r => {
+    const isFree   = r.result === 'free';
+    const isTaken  = r.result === 'taken';
+    const badge = isFree
+      ? `<span class="badge b-free"><span class="dot"></span>Free</span>`
+      : isTaken
+      ? `<span class="badge b-taken"><span class="dot"></span>Taken</span>`
+      : `<span class="badge b-unk"><span class="dot"></span>Unknown</span>`;
+    return `<div class="pcard ${isFree ? 'free' : isTaken ? 'taken' : ''}">
+      <span class="pname">${r.platform}</span>${badge}
+      ${r.url ? `<a class="open-link" href="${r.url}" target="_blank" rel="noopener">↗</a>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function pillsHtml(c) {
+  return `<span class="badge b-free"><span class="dot"></span>${c.free} free</span>`
+       + `<span class="badge b-taken"><span class="dot"></span>${c.taken} taken</span>`
+       + `<span class="badge b-unk"><span class="dot"></span>${c.unknown} unknown</span>`;
+}
+
+function addHistory(name, c) {
+  history.unshift({ name, ...c });
+  if (history.length > 20) history.pop();
+  $id('histSection').style.display = '';
+  $id('histList').innerHTML = history.map((h, i) => `
+    <div class="hist-item">
+      <span class="hname">@${h.name}</span>
+      <div class="hstats">
+        <span class="f">✓ ${h.free} free</span>
+        <span class="t">✗ ${h.taken} taken</span>
+        <span class="u">? ${h.unknown} unk</span>
+      </div>
+      <button class="recheck-btn" onclick="recheck(${i})">Re-check</button>
+    </div>`).join('');
+}
+
+function recheck(i) { $id('nameInput').value = history[i].name; stopReq = false; doCheck(history[i].name); }
+
+function copyFree() {
+  const lines = allResults.filter(r => r.result === 'free').map(r => `${r.platform}: ${r.url}`).join('\n');
+  if (!lines) { alert('No free results yet!'); return; }
+  navigator.clipboard.writeText(lines).then(() => alert(`Copied ${lines.split('\n').length} free links!`));
+}
+
+$id('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') startCheck(); });
+$id('descInput').addEventListener('keydown', e => { if (e.key === 'Enter') startAI(); });
+</script>
+</body>
+</html>
