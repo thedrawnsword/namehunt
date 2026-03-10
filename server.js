@@ -160,6 +160,72 @@ function httpPost(hostname, path, payload, headers = {}) {
   });
 }
 
+// ── InstantUsername API proxy ─────────────────────────────────────────────────
+// Maps our platform names to their API slugs
+const IU_SLUGS = {
+  'YouTube':      'youtube',
+  'Instagram':    'instagram',
+  'TikTok':       'tiktok',
+  'X (Twitter)':  'twitter',
+  'Reddit':       'reddit',
+  'GitHub':       'github',
+  'Twitch':       'twitch',
+  'LinkedIn':     'linkedin',
+  'Pinterest':    'pinterest',
+  'Snapchat':     'snapchat',
+  'Telegram':     'telegram',
+  'Facebook':     'facebook',
+  'Threads':      'threads',
+  'Bluesky':      'bluesky',
+  'Mastodon':     'mastodon',
+  'Tumblr':       'tumblr',
+  'Medium':       'medium',
+  'Substack':     'substack',
+  'Patreon':      'patreon',
+  'SoundCloud':   'soundcloud',
+  'Spotify':      'spotify',
+  'Flickr':       'flickr',
+  'Imgur':        'imgur',
+  'Vimeo':        'vimeo',
+  'Rumble':       'rumble',
+  'Letterboxd':   'letterboxd',
+  'Goodreads':    'goodreads',
+  'Behance':      'behance',
+  'Dribbble':     'dribbble',
+  'DeviantArt':   'deviantart',
+  'VK':           'vk',
+  'Wattpad':      'wattpad',
+  'Discord':      'discord',
+  'Gab':          'gab',
+  'Truth Social': 'truthsocial',
+};
+
+async function iuCheck(platformName, username) {
+  const slug = IU_SLUGS[platformName];
+  if (!slug) return null; // no mapping, skip
+  try {
+    const { status, body } = await httpGet(
+      `https://api.instantusername.com/c/v2/${slug}/${encodeURIComponent(username)}`,
+      {
+        'Referer':  'https://instantusername.com/',
+        'Origin':   'https://instantusername.com',
+        'Accept':   'application/json',
+      }
+    );
+    if (status === 200 || status === 304) {
+      const j = JSON.parse(body);
+      // { result: "claimed"|"available"|"unknown", available: bool }
+      if (j.result === 'available' || j.available === true)  return 'free';
+      if (j.result === 'claimed'   || j.available === false) {
+        // still trust "unknown" result even if available=false
+        if (j.result === 'unknown') return null; // fall through to our own check
+        return 'taken';
+      }
+    }
+  } catch {}
+  return null; // fall through to our own check
+}
+
 // ── Platform checks ───────────────────────────────────────────────────────────
 
 const PLATFORMS = [
@@ -884,10 +950,17 @@ http.createServer(async (req, res) => {
     await Promise.all(PLATFORMS.map(async p => {
       let result = 'taken';
       try {
-        result = await Promise.race([
-          p.check(name),
-          new Promise(r => setTimeout(() => r('taken'), HARD_TIMEOUT))
-        ]);
+        // Try instantusername API first — fast, cached, reliable
+        const iuResult = await iuCheck(p.name, name);
+        if (iuResult !== null) {
+          result = iuResult;
+        } else {
+          // Fall back to our own check
+          result = await Promise.race([
+            p.check(name),
+            new Promise(r => setTimeout(() => r('taken'), HARD_TIMEOUT))
+          ]);
+        }
       } catch {}
       done++;
       send({ type: 'result', platform: p.name, result, url: p.url(name), done, total });
