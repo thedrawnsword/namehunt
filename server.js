@@ -950,17 +950,10 @@ http.createServer(async (req, res) => {
     await Promise.all(PLATFORMS.map(async p => {
       let result = 'unknown';
       try {
-        // Try instantusername API first — fast, cached, reliable
-        const iuResult = await iuCheck(p.name, name);
-        if (iuResult !== null) {
-          result = iuResult;
-        } else {
-          // Fall back to our own check
-          result = await Promise.race([
-            p.check(name),
-            new Promise(r => setTimeout(() => r('unknown'), HARD_TIMEOUT))
-          ]);
-        }
+        result = await Promise.race([
+          p.check(name),
+          new Promise(r => setTimeout(() => r('unknown'), HARD_TIMEOUT))
+        ]);
       } catch { result = 'unknown'; }
       done++;
       send({ type: 'result', platform: p.name, result, url: p.url(name), done, total });
